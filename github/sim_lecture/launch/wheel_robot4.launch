@@ -1,0 +1,81 @@
+<launch>
+    <arg name="model" default="$(find sim_lecture)/urdf/wheel_robot3.urdf"/>
+    <arg name="paused" default="false"/>
+    <arg name="use_sim_time" default="true"/>
+    <arg name="gui" default="true"/>
+    <arg name="headless" default="false"/>
+    <arg name="debug" default="false"/>
+
+    <param name="robot_description" type="str" textfile="$(arg model)"/>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="debug" value="$(arg debug)"/>
+        <arg name="gui" value="$(arg gui)"/>
+        <arg name="paused" value="$(arg paused)"/>
+        <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+        <arg name="headless" value="$(arg headless)"/>
+    </include>
+
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
+          args="-param robot_description -urdf -model wheel_robot"/>
+
+    <rosparam>
+        wheel_robot:
+            joint_state_controller:
+                type: joint_state_controller/JointStateController
+                publish_rate: 50
+            
+            diff_drive_controller:
+                type        : "diff_drive_controller/DiffDriveController"
+                left_wheel  : 'left_wheel_joint'
+                right_wheel : 'right_wheel_joint'
+                publish_rate: 50.0
+                pose_covariance_diagonal : [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 1000.0]
+                twist_covariance_diagonal: [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 1000.0]
+
+                wheel_separation : 0.20
+                wheel_radius : 0.05
+
+                wheel_separation_multiplier : 1.0
+                wheel_radius_multipiler     : 1.0
+
+                cmd_vel_timeout: 1.0
+
+                base_frame_id: base_link
+
+                liner:
+                  x:
+                    has_velocity_limits     : true
+                    max_velocity            : 0.55  # m/s
+                    min_verocity            : -0.55
+                    has_accseleration_limits: true
+                    max_accseleration       : 1.0   # m/s^2
+                    min_accseleration       : -1.0
+                angular:
+                  z:
+                    has_velocity_limits     : true
+                    max_velocity            : 0.3   # rad/s
+                    min_verocity            : -0.3
+                    has_accseleration_limits: true
+                    max_accseleration       : 0.3   # rad/s^2
+                    min_accseleration       : -0.3
+    </rosparam>
+
+    <node name="controller_spawner" pkg="controller_manager" type="spawner"
+          respawn="false" output="screen" ns="wheel_robot"
+          args="joint_state_controller diff_drive_controller"/>
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"
+          respawn="false" output="screen" ns="wheel_robot"/>
+
+    <node name="rviz" pkg="rviz" type="rviz" 
+          args="-d $(find sim_lecture)/config/SETTING.rviz" required="true"/>
+
+    <node name="sim_model_base_publisher" pkg="sim_lecture" type="sim_model_base_publisher" output="screen">
+        <param name="mode_name" value="wheel_robot"/>
+        <param name="world_frame" value="/world"/>
+        <param name="base_frame" value="/base_link"/>
+    </node>  
+    <node name="world_to_odom" pkg="tf" type="static_transform_publisher"
+          args="0 0 0 0 0 0 /world /odom 100"/>
+</launch>
