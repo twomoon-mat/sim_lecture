@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Choose rosrecord -->
+    <arg name="model" default="$(find cartographer_ros)/urdf/wheel_robot_normal.urdf" />
+    <arg name="rosbag_record" default="false" />
+    <arg name="bagfile_name" default="cartographer_record" />
+    <param name="robot_description" type="str" textfile="$(arg model)"/>
+
+    <!-- loading robot hardware interface -->
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
+          args="-param robot_description -urdf -model wheel_robot"/>
+
+    <!-- loading robot controller interface -->
+    <rosparam file="$(find cartographer_ros)/config/diff_drive.yaml" command="load" />  
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" 
+          respawn="false"
+          args="joint_state_controller diff_drive_controller"/>
+    <!-- robot state publisher -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher"
+          type="robot_state_publisher" output="screen"/>
+    
+    <!-- loading world file -->
+    <include file="$(find cartographer_ros)/launch/empty_world.launch" >
+        <arg name="world_name" value="$(find cartographer_ros)/worlds/turtlebot3_stage_1.world"/>
+        <arg name="use_sim_time" value="true"/>
+        <arg name="paused" value="false"/>
+        <arg name="gui" value="true"/>
+        <arg name="headless" value="false"/>
+        <arg name="debug" value="false"/>
+    </include>
+
+  <!-- urg node -->
+  <!--node pkg="urg_node" type="urg_node" name="urg_node" output="screen"/-->
+
+    <node name="nav_gazebo_odom" pkg="cartographer_ros" type="nav_gazebo_odom" output="screen">
+        <param name="model_name"  value="wheel_robot" />
+        <param name="world_frame" value="odom" />
+        <param name="odom_frame"  value="base_link" />
+        <param name="publish_rate"  value="20" />
+        <param name="noise"  value="0.0" />
+        <param name="tf_enable"  value="true" />
+        <remap from="odom" to="/odom" />
+    </node>
+
+    <node name="tf_map_to_odom" pkg="tf" type="static_transform_publisher" args="0 0 0 0 0 0 map odom 100" />
+    <!--node name="cartographer_node" pkg="cartographer_ros"
+          type="cartographer_node" args="
+            -configuration_directory $(find cartographer_ros)/configuration_files
+            -configuration_basename robot_simulation.lua"
+          output="screen">
+    </node-->
+
+  <!--arg name="navigation" default="false"/-->
+  <!-- cartographer_occupancy_grid_node -->
+  <!--node unless="$(arg navigation)" name="cartographer_occupancy_grid_node" 
+        pkg="cartographer_ros" type="cartographer_occupancy_grid_node" 
+        ns="/wheel_robot" args="-resolution 0.05" /-->
+
+  <!--node pkg="rosbag" type="record" name="cartographer_record"
+        args="record $(arg bagfile_name) /tf /scan /odom"
+        if="$(arg rosbag_record)" /-->
+
+    <!-- Visualisation rviz unless="$(arg navigation)" -->
+    <node pkg="rviz" type="rviz" name="cartographer_rviz"
+          args="-d $(find cartographer_ros)/configuration_files/cartographer_sim.rviz" 
+          output="screen"/>
+
+</launch>

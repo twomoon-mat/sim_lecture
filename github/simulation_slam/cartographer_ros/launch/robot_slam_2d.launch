@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<!--
+  Copyright 2016 The Cartographer Authors
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<launch>
+<!-- Choose rosrecord -->
+  <arg name="rosbag_record" default="false" />
+  <arg name="bagfile_name" default="cartographer_record" />
+
+  <!-- roomba driver & urdf -->
+  <include file="$(find ca_driver)/launch/create_2.launch"/>
+  <!-- tf Link -->
+  <include file="$(find cartographer_ros)/launch/robot_slam_2d_tfpub.launch"/>
+  <!-- urg node -->
+  <node pkg="urg_node" type="urg_node" name="urg_node" output="screen"/>
+  <!-- roomba 500 node -->
+  <!--node pkg="roomba_500_series" type="roomba500_light_node" name="roomba500_light_node" output="screen" /-->
+  <!--node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop_twist_keyboard" output="screen" /-->
+  <!-- cartographer_node -->
+  <node name="cartographer_node" pkg="cartographer_ros"
+      type="cartographer_node" args="
+          -configuration_directory $(find cartographer_ros)/configuration_files
+          -configuration_basename debug_2d.lua"
+      output="screen">
+  </node>
+
+  <arg name="navigation" default="false"/>
+  <!-- cartographer_occupancy_grid_node -->
+  <node unless="$(arg navigation)" name="cartographer_occupancy_grid_node" pkg="cartographer_ros"
+      type="cartographer_occupancy_grid_node" args="-resolution 0.05" />
+
+  <node pkg="rosbag" type="record" name="cartographer_record"
+      args="record $(arg bagfile_name) /tf /scan /odom"
+      if="$(arg rosbag_record)" />
+
+  <!-- Visualisation rviz -->
+  <node unless="$(arg navigation)" pkg="rviz" type="rviz" name="cartographer_rviz"
+    args="-d $(find cartographer_ros)/configuration_files/cartographer.rviz" output="screen"/>
+
+</launch>

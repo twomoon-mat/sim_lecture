@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="path" default="/home/k-hachisu/.ros/" />
+  <arg name="bag_filename" default="cartographer_record" />
+  <!-- roomba driver & urdf -->
+  <include file="$(find ca_description)/launch/create_2.launch"/>
+  <node name="cartographer_assets_writer" pkg="cartographer_ros" required="true"
+     type="cartographer_assets_writer" args="
+         -configuration_directory $(find cartographer_ros)/configuration_files
+         -configuration_basename assets_writer_debug_2d.lua
+         -bag_filenames $(arg path)$(arg bag_filename).bag
+         -pose_graph_filename $(arg path)$(arg bag_filename).bag.pbstream"
+      output="screen">
+  </node>
+</launch>
